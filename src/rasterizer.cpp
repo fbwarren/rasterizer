@@ -33,7 +33,6 @@ namespace CGL {
     // fill in the nearest pixel
     int sx = (int)floor(x);
     int sy = (int)floor(y);
-
     // check bounds
     if (sx < 0 || sx >= width) return;
     if (sy < 0 || sy >= height) return;
@@ -71,11 +70,27 @@ namespace CGL {
     float x2, float y2,
     Color color) {
     // TODO: Task 1: Implement basic triangle rasterization here, no supersampling
+    // We only want to sample pixels that are inside of the rectangle that the triangle is bounded by
+    float xmin, xmax, ymin, ymax;
+    xmin = floor(min({x0, x1, x2}));
+    xmax = ceil(max({x0, x1, x2}));
+    ymin = floor(min({y0, y1, y2}));
+    ymax = ceil(max({y0, y1, y2}));
 
+    // Use the line equation for each sample to see
+    for (float x = xmin + 0.5; x < xmax; x++)
+        for (float y = ymin + 0.5; y < ymax; y++) {
+            float l0 = -(x-x0)*(y1-y0) + (y-y0)*(x1-x0);
+            float l1 = -(x-x1)*(y2-y1) + (y-y1)*(x2-x1);
+            float l2 = -(x-x2)*(y0-y2) + (y-y2)*(x0-x2);
+
+            // If the line equation result is + for all lines or - for all lines, then we know that the
+            // sample point is inside (bounded by) a triangle
+            if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
+                { rasterize_point(x, y, color); }
+        }
     // TODO: Task 2: Update to implement super-sampled rasterization
-
-
-
+    return;
   }
 
 
