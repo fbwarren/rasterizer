@@ -21,12 +21,7 @@ namespace CGL {
         // TODO: Task 2: You might need to this function to fix points and lines (such as the black rectangle border in test4.svg)
         // NOTE: You are not required to implement proper supersampling for points and lines
         // It is sufficient to use the same color for all supersamples of a pixel for points and lines (not triangles)
-        int rate = sqrt(sample_rate);
-        for (int i = 0; i < rate; i++) {
-            for (int j = 0; j < rate; j++) {
-                sample_buffer[sample_rate * width * y + sample_rate * x + j + i * width * rate] = c;
-            }
-        }
+        sample_buffer[y * width + x] = c;
     }
 
     // Rasterize a point: simple example to help you start familiarizing
@@ -75,24 +70,13 @@ namespace CGL {
         // TODO: Task 1: Implement basic triangle rasterization here, no supersampling
         // We only want to sample pixels that are inside of the rectangle that the triangle is bounded by
         float xmin, xmax, ymin, ymax;
-        float distances[] = {0.0, 0.0, 0.0};
-        float vertices[] = {x0, y0, x1, y1, x2, y2};
-        int rate = sqrt(sample_rate);
-
-        x0 *= rate;
-        x1 *= rate;
-        x2 *= rate;
-        y0 *= rate;
-        y1 *= rate;
-        y2 *= rate;
-
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
         ymin = floor(min({y0, y1, y2}));
         ymax = ceil(max({y0, y1, y2}));
 
         // Use the line equation for each sample
-        for (int x = xmin; x < xmax; x++)
+        for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
                 float l0 = lineEquation(x, y, x0, y0, x1, y1);
                 float l1 = lineEquation(x, y, x1, y1, x2, y2);
@@ -101,12 +85,12 @@ namespace CGL {
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
-                { sample_buffer[y * width + x] = color;}
+                    { sample_buffer[y * width + x] = color; }
             }
+        }
         // TODO: Task 2: Update to implement super-sampled rasterization
         return;
     }
-
 
     void RasterizerImp::rasterize_interpolated_color_triangle(float x0, float y0, Color c0,
                                                               float x1, float y1, Color c1,
@@ -122,7 +106,7 @@ namespace CGL {
         ymax = ceil(max({y0, y1, y2}));
 
         // Use the line equation for each sample
-        for (int x = xmin; x < xmax; x++)
+        for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
                 fill_n(bCoords, 3, 0);
                 barycentricCoord(x, y, x0, y0, x1, y1, x2, y2, bCoords);
@@ -131,13 +115,12 @@ namespace CGL {
                 float l2 = lineEquation(x, y, x2, y2, x0, y0);
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
-                if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
-                    { sample_buffer[y * width + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2); }
+                if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
+                    sample_buffer[y * width + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
+                }
             }
-
-
+        }
     }
-
 
     void RasterizerImp::rasterize_textured_triangle(float x0, float y0, float u0, float v0,
                                                     float x1, float y1, float u1, float v1,
@@ -160,20 +143,16 @@ namespace CGL {
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
     }
 
-
     void RasterizerImp::set_framebuffer_target(unsigned char* rgb_framebuffer,
                                                size_t width, size_t height)
     {
         // TODO: Task 2: You may want to update this function for supersampling support
-
         this->width = width;
         this->height = height;
         this->rgb_framebuffer_target = rgb_framebuffer;
 
-
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
     }
-
 
     void RasterizerImp::clear_buffers() {
         std::fill(rgb_framebuffer_target, rgb_framebuffer_target + 3 * width * height, 255);
@@ -187,18 +166,16 @@ namespace CGL {
     // pixels from the supersample buffer data.
     //
     void RasterizerImp::resolve_to_framebuffer() {
-        // TODO: Task 2: You will likely want l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0to update this function for supersampling support
-        int rate = sqrt(sample_rate);
-        for (int x = 0; x < width * rate; ++x) {
-            for (int y = 0; y < height * rate; ++y) {
-                Color col = sample_buffer[y * width * rate + x] * (1.0 / rate); // weight supersamples
+        // TODO: Task 2: You will likely want to update this function for supersampling support
+        for (int x = 0; x < width; ++x) {
+            for (int y = 0; y < height; ++y) {
+                Color col = sample_buffer[y * width + x]; // weight supersamples
                 for (int k = 0; k < 3; ++k) {
                     // Add each (weighted) supersample to the pixel it belongs to
-                    this->rgb_framebuffer_target[3 * (y/rate * width * rate + x/rate) + k] = (&col.r)[k] * 255;
+                    this->rgb_framebuffer_target[3 * (y * width + x) + k] = (&col.r)[k] * 255;
                 }
             }
         }
-
     }
 
     // Line equation helper
@@ -218,9 +195,5 @@ namespace CGL {
         coords[2] = 1 - coords[0] - coords[1];
     }
 
-
-
     Rasterizer::~Rasterizer() { }
-
-
 }// CGL
