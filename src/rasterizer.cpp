@@ -21,7 +21,13 @@ namespace CGL {
         // TODO: Task 2: You might need to this function to fix points and lines (such as the black rectangle border in test4.svg)
         // NOTE: You are not required to implement proper supersampling for points and lines
         // It is sufficient to use the same color for all supersamples of a pixel for points and lines (not triangles)
-        sample_buffer[y * width + x] = c;
+        int start = y * width * sample_rate + x * sqrt(sample_rate);
+        Color color = Color();
+        for (int col = 0; col < sqrt(sample_rate); ++col) {
+            for (int row = 0; row < sqrt(sample_rate); ++row) {
+                color += sample_buffer[start + row*sample_rate*width + col] * (1.0/sample_rate);
+            }
+        }
     }
 
     // Rasterize a point: simple example to help you start familiarizing
@@ -69,6 +75,14 @@ namespace CGL {
                                            Color color) {
         // TODO: Task 1: Implement basic triangle rasterization here, no supersampling
         // We only want to sample pixels that are inside of the rectangle that the triangle is bounded by
+        int rate = sqrt(sample_rate);
+        x0 *= rate;
+        x1 *= rate;
+        x2 *= rate;
+        y0 *= rate;
+        y1 *= rate;
+        y2 *= rate;
+
         float xmin, xmax, ymin, ymax;
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
@@ -85,7 +99,7 @@ namespace CGL {
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
-                    { sample_buffer[y * width + x] = color; }
+                    { sample_buffer[y * width * rate + x] = color; }
             }
         }
         // TODO: Task 2: Update to implement super-sampled rasterization
@@ -100,6 +114,15 @@ namespace CGL {
         // Hint: You can reuse code from rasterize_triangle
         float xmin, xmax, ymin, ymax;
         float bCoords[3];
+        int rate = sqrt(sample_rate);
+
+        x0 *= rate;
+        x1 *= rate;
+        x2 *= rate;
+        y0 *= rate;
+        y1 *= rate;
+        y2 *= rate;
+
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
         ymin = floor(min({y0, y1, y2}));
@@ -116,7 +139,7 @@ namespace CGL {
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
-                    sample_buffer[y * width + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
+                    sample_buffer[y * width * sqrt(sample_rate) + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
                 }
             }
         }
@@ -147,8 +170,8 @@ namespace CGL {
                                                size_t width, size_t height)
     {
         // TODO: Task 2: You may want to update this function for supersampling support
-        this->width = width;
-        this->height = height;
+        this->width = width * sqrt(sample_rate);
+        this->height = height * sqrt(sample_rate);
         this->rgb_framebuffer_target = rgb_framebuffer;
 
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
@@ -170,17 +193,24 @@ namespace CGL {
         int rate = sqrt(sample_rate);
         for (int x = 0; x < width; ++x) {
             for (int y = 0; y < height; ++y) {
-                for (int sx = 0; sx < rate; ++sx) {
-                    for (int sy = 0; sy < rate; ++sy) {
-                        Color col = sample_buffer[y*rate*rate*width + x*rate + sx + sy*rate*width] * (1.0/sample_rate);
-                        for (int k = 0; k < 3; ++k) {
-                            // Add each (weighted) supersample to the pixel it belongs to
-                            this->rgb_framebuffer_target[3 * (y * width + x) + k] = (&col.r)[k] * 255;
-                        }
-                    }
+                Color col = averagePixels(x, y);
+                for (int k = 0; k < 3; ++k) {
+                    // Add each (weighted) supersample to the pixel it belongs to
+                    this->rgb_framebuffer_target[3 * (y * width + x) + k] = (&col.r)[k] * 255;
                 }
             }
         }
+    }
+
+    Color RasterizerImp::averagePixels(int x, int y){
+        int start = y * width * sample_rate + x * sqrt(sample_rate);
+        Color color = Color();
+        for (int col = 0; col < sqrt(sample_rate); ++col) {
+            for (int row = 0; row < sqrt(sample_rate); ++row) {
+                color += sample_buffer[start + row*sample_rate*width + col] * (1.0/sample_rate);
+            }
+        }
+        return color;
     }
 
     // Line equation helper
