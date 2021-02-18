@@ -167,12 +167,17 @@ namespace CGL {
     //
     void RasterizerImp::resolve_to_framebuffer() {
         // TODO: Task 2: You will likely want to update this function for supersampling support
+        int rate = sqrt(sample_rate);
         for (int x = 0; x < width; ++x) {
             for (int y = 0; y < height; ++y) {
-                Color col = sample_buffer[y * width + x]; // weight supersamples
-                for (int k = 0; k < 3; ++k) {
-                    // Add each (weighted) supersample to the pixel it belongs to
-                    this->rgb_framebuffer_target[3 * (y * width + x) + k] = (&col.r)[k] * 255;
+                for (int sx = 0; sx < rate; ++sx) {
+                    for (int sy = 0; sy < rate; ++sy) {
+                        Color col = sample_buffer[y*rate*rate*width + x*rate + sx + sy*rate*width] * (1.0/sample_rate);
+                        for (int k = 0; k < 3; ++k) {
+                            // Add each (weighted) supersample to the pixel it belongs to
+                            this->rgb_framebuffer_target[3 * (y * width + x) + k] = (&col.r)[k] * 255;
+                        }
+                    }
                 }
             }
         }
