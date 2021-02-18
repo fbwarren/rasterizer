@@ -115,6 +115,7 @@ namespace CGL {
         // TODO: Task 4: Rasterize the triangle, calculating barycentric coordinates and using them to interpolate vertex colors across the triangle
         // Hint: You can reuse code from rasterize_triangle
         float xmin, xmax, ymin, ymax;
+        float bCoords[3];
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
         ymin = floor(min({y0, y1, y2}));
@@ -123,14 +124,15 @@ namespace CGL {
         // Use the line equation for each sample
         for (int x = xmin; x < xmax; x++)
             for (int y = ymin; y < ymax; y++) {
-                float l0 = -(x-x0+.5)*(y1-y0) + (y-y0+.5)*(x1-x0);
-                float l1 = -(x-x1+.5)*(y2-y1) + (y-y1+.5)*(x2-x1);
-                float l2 = -(x-x2+.5)*(y0-y2) + (y-y2+.5)*(x0-x2);
-
+                fill_n(bCoords, 3, 0);
+                barycentricCoord(x, y, x0, y0, x1, y1, x2, y2, bCoords);
+                float l0 = lineEquation(x, y, x0, y0, x1, y1);
+                float l1 = lineEquation(x, y, x1, y1, x2, y2);
+                float l2 = lineEquation(x, y, x2, y2, x0, y0);
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
-                    { sample_buffer[y * width + x] = c1; }
+                    { sample_buffer[y * width + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2); }
             }
 
 
@@ -185,7 +187,7 @@ namespace CGL {
     // pixels from the supersample buffer data.
     //
     void RasterizerImp::resolve_to_framebuffer() {
-        // TODO: Task 2: You will likely want to update this function for supersampling support
+        // TODO: Task 2: You will likely want l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0to update this function for supersampling support
         int rate = sqrt(sample_rate);
         for (int x = 0; x < width * rate; ++x) {
             for (int y = 0; y < height * rate; ++y) {
@@ -201,9 +203,22 @@ namespace CGL {
 
     // Line equation helper
     // Finds the magnitude of a normal formed between a point (x, y) and a line formed by the other args.
-    float RasterizerImp::lineEquation(int x, int y, int x0, int y0, int x1, int y1) {
+    float RasterizerImp::lineEquation(int x, int y, float x0, float y0, float x1, float y1) {
         return -(x-x0 + 0.5) * (y1-y0) + (y-y0 + 0.5) * (x1-x0);
     }
+
+    // Barycentric coordinate helper
+    // Doesn't assume that the point is in your triangle!
+    // The coordinates will go into the coords array
+    void RasterizerImp::barycentricCoord(int x, int y, float x0, float y0, float x1, float y1, float x2, float y2, float *coords) {
+        float l1 = lineEquation(x, y, x1, y1, x2, y2);
+        float l2 = lineEquation(x, y, x2, y2, x0, y0);
+        coords[0] = (l1 / lineEquation(x0, y0, x1, y1, x2, y2));
+        coords[1] = (l2 / lineEquation(x1, y1, x2, y2, x0, y0));
+        coords[2] = 1 - coords[0] - coords[1];
+    }
+
+
 
     Rasterizer::~Rasterizer() { }
 
