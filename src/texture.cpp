@@ -28,24 +28,43 @@ namespace CGL {
 
   Color Texture::sample_nearest(Vector2D uv, int level) {
     // TODO: Task 5: Fill this in.
-    auto& mip = mipmap[level];
-
-
-
-
     // return magenta for invalid level
-    return Color(1, 0, 1);
+    return Color(1,0,1);
+    if (level >= mipmap.size()) return Color(1, 0, 1);
+
+    auto& mip = mipmap[level];
+    uv.x *= mip.width - 1;
+    uv.y *= mip.height - 1;
+
+    return mip.get_texel(round(uv.x), round(uv.y));
   }
 
   Color Texture::sample_bilinear(Vector2D uv, int level) {
     // TODO: Task 5: Fill this in.
+    Color u00, u01, u10, u11;
+    Color u0, u1;
+    int s, t;
+
     auto& mip = mipmap[level];
-
-
-
-
     // return magenta for invalid level
-    return Color(1, 0, 1);
+    if (level >= mipmap.size()) return Color(1, 0, 1);
+
+    // scale by miplevel dimensions
+    uv.x *= mip.width - 1;
+    uv.y *= mip.height - 1;
+
+    // 4 nearest texels
+    u00 = mip.get_texel(floor(uv.x), ceil(uv.y));
+    u01 = mip.get_texel(floor(uv.x), floor(uv.y));
+    u10 = mip.get_texel(ceil(uv.x), ceil(uv.y));
+    u11 = mip.get_texel(ceil(uv.x), floor(uv.y));
+    // helper lerps (horizontal)
+    s = uv.x - (floor(uv.x)) ;
+    u0 = lerp(s, u00, u10);
+    u1 = lerp(s, u00, u10);
+    // final vertical lerp
+    t = uv.y - (floor(uv.y));
+    return lerp(t, u0, u1);
   }
 
 
@@ -66,6 +85,11 @@ namespace CGL {
     dst_uint8[0] = (uint8_t)(255.f * max(0.0f, min(1.0f, src[0])));
     dst_uint8[1] = (uint8_t)(255.f * max(0.0f, min(1.0f, src[1])));
     dst_uint8[2] = (uint8_t)(255.f * max(0.0f, min(1.0f, src[2])));
+  }
+
+  // Linear interpolation helper
+  Color Texture::lerp(float x, Color v0, Color v1) {
+      return v0 + x * (v1 + (-1 * v0));
   }
 
   void Texture::generate_mips(int startLevel) {

@@ -22,10 +22,9 @@ namespace CGL {
         // NOTE: You are not required to implement proper supersampling for points and lines
         // It is sufficient to use the same color for all supersamples of a pixel for points and lines (not triangles)
         int start = y * width * sample_rate + x * sqrt(sample_rate);
-        Color color = Color();
         for (int col = 0; col < sqrt(sample_rate); ++col) {
             for (int row = 0; row < sqrt(sample_rate); ++row) {
-                color += sample_buffer[start + row*sample_rate*width + col] * (1.0/sample_rate);
+                sample_buffer[start + row*sample_rate*width + col] = c;
             }
         }
     }
@@ -74,8 +73,10 @@ namespace CGL {
                                            float x2, float y2,
                                            Color color) {
         // TODO: Task 1: Implement basic triangle rasterization here, no supersampling
-        // We only want to sample pixels that are inside of the rectangle that the triangle is bounded by
+        float xmin, xmax, ymin, ymax;
         int rate = sqrt(sample_rate);
+
+        // scale the triangle
         x0 *= rate;
         x1 *= rate;
         x2 *= rate;
@@ -83,7 +84,7 @@ namespace CGL {
         y1 *= rate;
         y2 *= rate;
 
-        float xmin, xmax, ymin, ymax;
+        // bounding box
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
         ymin = floor(min({y0, y1, y2}));
@@ -92,13 +93,15 @@ namespace CGL {
         // Use the line equation for each sample
         for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
-                float l0 = lineEquation(x, y, x0, y0, x1, y1);
-                float l1 = lineEquation(x, y, x1, y1, x2, y2);
-                float l2 = lineEquation(x, y, x2, y2, x0, y0);
+                // bound check
+                if (x < 0 || y < 0 || x > width * rate || y > height * rate) continue;
+                float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
+                float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
+                float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
 
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
-                if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0)
+                if (l0 > 0.0 && l1 > 0.0 && l2 > 0.0 || l0 < 0.0 && l1 < 0.0 && l2 < 0.0)
                     { sample_buffer[y * width * rate + x] = color; }
             }
         }
@@ -116,6 +119,52 @@ namespace CGL {
         float bCoords[3];
         int rate = sqrt(sample_rate);
 
+        // Scale the triangle
+        x0 *= rate;
+        x1 *= rate;
+        x2 *= rate;
+        y0 *= rate;
+        y1 *= rate;
+        y2 *= rate;
+
+        // Bounding box
+        xmin = floor(min({x0, x1, x2}));
+        xmax = ceil(max({x0, x1, x2}));
+        ymin = floor(min({y0, y1, y2}));
+        ymax = ceil(max({y0, y1, y2}));
+
+        // Use the line equation for each sample
+        for (int x = xmin; x < xmax; x++) {
+            for (int y = ymin; y < ymax; y++) {
+                // bound check
+                if (x < 0 || y < 0 || x > width * rate || y > height * rate) continue;
+                fill_n(bCoords, 3, 0);
+                barycentricCoord(x+0.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
+                float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
+                float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
+                float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
+                // If the line equation result is + for all lines or - for all lines, then we know that the
+                // sample point is inside (bounded by) a triangle
+                if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
+                    sample_buffer[y * width * rate + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
+                }
+            }
+        }
+    }
+
+    void RasterizerImp::rasterize_textured_triangle(float x0, float y0, float u0, float v0,
+                                                    float x1, float y1, float u1, float v1,
+                                                    float x2, float y2, float u2, float v2,
+                                                    Texture& tex)
+    {
+        // TODO: Task 5: Fill in the SampleParams struct and pass it to the tex.sample function.
+        // TODO: Task 6: Set the correct barycentric differentials in the SampleParams struct.
+        // Hint: You can reuse code from rasterize_triangle/rasterize_interpolated_color_triangle
+        int rate = sqrt(sample_rate);
+        float xmin, xmax, ymin, ymax;
+        float bCoords[3];
+        Vector2D texSample;
+
         x0 *= rate;
         x1 *= rate;
         x2 *= rate;
@@ -132,28 +181,23 @@ namespace CGL {
         for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
                 fill_n(bCoords, 3, 0);
-                barycentricCoord(x, y, x0, y0, x1, y1, x2, y2, bCoords);
-                float l0 = lineEquation(x, y, x0, y0, x1, y1);
-                float l1 = lineEquation(x, y, x1, y1, x2, y2);
-                float l2 = lineEquation(x, y, x2, y2, x0, y0);
+                barycentricCoord(x+0.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
+                // create (u, v) vector for use in sample functions
+                texSample = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+                float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
+                float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
+                float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
-                    sample_buffer[y * width * sqrt(sample_rate) + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
+                    if (psm == P_NEAREST) {
+                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_nearest(texSample);
+                    } else if (psm == P_LINEAR) {
+                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_bilinear(texSample);
+                    }
                 }
             }
         }
-    }
-
-    void RasterizerImp::rasterize_textured_triangle(float x0, float y0, float u0, float v0,
-                                                    float x1, float y1, float u1, float v1,
-                                                    float x2, float y2, float u2, float v2,
-                                                    Texture& tex)
-    {
-        // TODO: Task 5: Fill in the SampleParams struct and pass it to the tex.sample function.
-        // TODO: Task 6: Set the correct barycentric differentials in the SampleParams struct.
-        // Hint: You can reuse code from rasterize_triangle/rasterize_interpolated_color_triangle
-
 
 
 
@@ -170,8 +214,8 @@ namespace CGL {
                                                size_t width, size_t height)
     {
         // TODO: Task 2: You may want to update this function for supersampling support
-        this->width = width * sqrt(sample_rate);
-        this->height = height * sqrt(sample_rate);
+        this->width = width;
+        this->height = height;
         this->rgb_framebuffer_target = rgb_framebuffer;
 
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
@@ -190,7 +234,6 @@ namespace CGL {
     //
     void RasterizerImp::resolve_to_framebuffer() {
         // TODO: Task 2: You will likely want to update this function for supersampling support
-        int rate = sqrt(sample_rate);
         for (int x = 0; x < width; ++x) {
             for (int y = 0; y < height; ++y) {
                 Color col = averagePixels(x, y);
@@ -202,12 +245,14 @@ namespace CGL {
         }
     }
 
+    // This function returns a color that is the average of the supersamples for the pixel (x,y)
+    // The sample_buffer is in row order
     Color RasterizerImp::averagePixels(int x, int y){
         int start = y * width * sample_rate + x * sqrt(sample_rate);
         Color color = Color();
         for (int col = 0; col < sqrt(sample_rate); ++col) {
             for (int row = 0; row < sqrt(sample_rate); ++row) {
-                color += sample_buffer[start + row*sample_rate*width + col] * (1.0/sample_rate);
+                color += sample_buffer[start + row * sqrt(sample_rate) * width + col] * (1.0 / sample_rate);
             }
         }
         return color;
@@ -215,8 +260,8 @@ namespace CGL {
 
     // Line equation helper
     // Finds the magnitude of a normal formed between a point (x, y) and a line formed by the other args.
-    float RasterizerImp::lineEquation(int x, int y, float x0, float y0, float x1, float y1) {
-        return -(x-x0 + 0.5) * (y1-y0) + (y-y0 + 0.5) * (x1-x0);
+    float RasterizerImp::lineEquation(float x, float y, float x0, float y0, float x1, float y1) {
+        return -(x-x0) * (y1-y0) + (y-y0) * (x1-x0);
     }
 
     // Barycentric coordinate helper

@@ -47,6 +47,9 @@ struct Texture {
     generate_mips();
   }
 
+  // Linear interpolation helper
+  Color lerp(float x, Color v0, Color v1);
+
   // Generates up to kMaxMipLevels of mip maps. Level 0 contains
   // the unfiltered original pixels.
   void generate_mips(int startLevel = 0);
