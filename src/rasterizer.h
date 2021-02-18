@@ -137,6 +137,7 @@ namespace CGL {
     // in preparation for posting pixels to the screen.
     virtual void resolve_to_framebuffer();
 
+    float lineEquation(int x, int y, int x0, int y0, int x1, int y1);
   };
 
 
