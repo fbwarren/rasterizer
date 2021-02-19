@@ -14,8 +14,6 @@
   - [**Part 3: Transforms**](#part-3-transforms)
   - [**Part 4: Barycentric coordinates**](#part-4-barycentric-coordinates)
   - [**Part 5: "Pixel sampling" for texture mapping**](#part-5-pixel-sampling-for-texture-mapping)
-    - [**Nearest Neighbor**](#nearest-neighbor)
-    - [**Bilinear**](#bilinear)
   - [**Part 6 "Level sampling" with mipmaps for texture mapping**](#part-6-level-sampling-with-mipmaps-for-texture-mapping)
 
 ## **Overview**
@@ -113,13 +111,9 @@ So far in the project, we have been drawing shapes and coloring them with colors
 
 There's various ways to actually implement texture mapping. The two ways were were asked to implement texture mapping was *nearest neighbor* and *bilinear*.
 
-#### **Nearest Neighbor**
+- **Nearest Neighbor**:vAfer determining the texture coordinates $(u,v)$ by barycentric coordinates, we just scale the coordinates by the texture image dimensions, then round to the nearest pixel in the texture.
 
-Afer determining the texture coordinates $(u,v)$ by barycentric coordinates, we just scale the coordinates by the texture image dimensions, then round to the nearest pixel in the texture.
-
-#### **Bilinear**
-
-Bilinear filtering basically takes the four closest pixels to the $(u,v)$ and determines a weighted average based on the position of $(u,v)$ relative to the four pixels.
+- **Bilinear** : Bilinear filtering basically takes the four closest pixels to the $(u,v)$ and determines a weighted average based on the position of $(u,v)$ relative to the four pixels.
 
 | <img src="./images/nearest1.png"> | ![](./images/nearest16.png) |
 |:--:|:--:|
@@ -133,5 +127,32 @@ It's a bit subtl, but you can see that there is less noise when using bilinear f
 
 ### **Part 6 "Level sampling" with mipmaps for texture mapping**
 
+Just like with rasterizing images, texture mapping can suffer from aliasing issues. Specifically, with texture mapping, these issues a rooted in the difficults that come with trying to scale and transform a texture to properly fit a surface. Level sampling is a technique to mitigate these issues by storing different levels (mipmaps) of filtered and down-sampled textures, using the different levels depending on the distance of the surface.  
+In this project, there are two types of level sampling beyond just using the full resolution texture.  
 
+- **Nearest level sampling**: similar to nearest pixel sampling. This uses the level texture that is closest to the calculated level.
 
+- **Bilinear level sampling**: similar to bilinear pixel sampling. Instead of rounding, this uses a weighted sum of the two levels that contribute to the frame.
+
+The calculation of the level $D$ is as follows:
+
+$$
+D = log_2L \\
+$$
+$$
+L = max \left(\sqrt{\frac{du^2}{dx} + \frac{dv^2}{dx}}, \sqrt{\frac{du^2}{dy} + \frac{dv^2}{dy}}\right)
+$$
+
+With all the tasks complete, the renderer is able to select from 2 different pixel sampling and 3 different level sampling methods with 1x to 16x supersampling. There are various tradeoffs between speed, memory usage, and antialiasing for these techniques. The fastest and most memory efficient techniques are those that take the least amount of samples, and that perform the least amount of calculations per sample.  
+
+The slowest performance but best antialiasing will be achieved by bilinear pixel and level filtering in conjunction with 16x supersampling. On the other end, we can achieve the best performance by choosing nearest neighbor pixel sampling, zero level sampling, and 1x supersampling.
+
+Here's what some of the different combinations look like:
+
+| <img src="./images/orc1.png"> | ![](./images/orc2.png) |
+|:--:|:--:|
+| *zero level, nearest pixel* | *zero level, bilinear pixel* |  
+
+| <img src="./images/orc3.png"> | ![](./images/orc4.png) |
+|:--:|:--:|
+| *nearest level, nearest pixel* | *nearest level, bilinear pixel* |
