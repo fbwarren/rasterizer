@@ -12,13 +12,12 @@ namespace CGL {
         this->width = width;
         this->height = height;
         this->sample_rate = sample_rate;
-
         sample_buffer.resize(width * height * sample_rate, Color::White);
     }
 
     // Used by rasterize_point and rasterize_line
     void RasterizerImp::fill_pixel(size_t x, size_t y, Color c) {
-        // TODO: Task 2: You might need to this function to fix points and lines (such as the black rectangle border in test4.svg)
+        
         // NOTE: You are not required to implement proper supersampling for points and lines
         // It is sufficient to use the same color for all supersamples of a pixel for points and lines (not triangles)
         int start = y * width * sample_rate + x * sqrt(sample_rate);
@@ -29,9 +28,6 @@ namespace CGL {
         }
     }
 
-    // Rasterize a point: simple example to help you start familiarizing
-    // yourself with the starter code.
-    //
     void RasterizerImp::rasterize_point(float x, float y, Color color) {
         // fill in the nearest pixel
         int sx = (int)floor(x);
@@ -72,10 +68,8 @@ namespace CGL {
                                            float x1, float y1,
                                            float x2, float y2,
                                            Color color) {
-        // TODO: Task 1: Implement basic triangle rasterization here, no supersampling
         float xmin, xmax, ymin, ymax;
         int rate = sqrt(sample_rate);
-
         // scale the triangle
         x0 *= rate;
         x1 *= rate;
@@ -83,7 +77,6 @@ namespace CGL {
         y0 *= rate;
         y1 *= rate;
         y2 *= rate;
-
         // bounding box
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
@@ -103,7 +96,6 @@ namespace CGL {
                     { sample_buffer[y * width * rate + x] = color; }
             }
         }
-        // TODO: Task 2: Update to implement super-sampled rasterization
         return;
     }
 
@@ -111,8 +103,6 @@ namespace CGL {
                                                               float x1, float y1, Color c1,
                                                               float x2, float y2, Color c2)
     {
-        // TODO: Task 4: Rasterize the triangle, calculating barycentric coordinates and using them to interpolate vertex colors across the triangle
-        // Hint: You can reuse code from rasterize_triangle
         float xmin, xmax, ymin, ymax;
         float bCoords[3];
         int rate = sqrt(sample_rate);
@@ -151,13 +141,12 @@ namespace CGL {
                                                     float x2, float y2, float u2, float v2,
                                                     Texture& tex)
     {
-        // TODO: Task 5: Fill in the SampleParams struct and pass it to the tex.sample function.
-        // TODO: Task 6: Set the correct barycentric differentials in the SampleParams struct.
-        // Hint: You can reuse code from rasterize_triangle/rasterize_interpolated_color_triangle
         int rate = sqrt(sample_rate);
         float xmin, xmax, ymin, ymax;
         float bCoords[3];
-        Vector2D sample;
+        SampleParams sample;
+        sample.lsm = lsm;
+        sample.psm = psm;
 
         // scale the triangle
         x0 *= rate;
@@ -177,30 +166,26 @@ namespace CGL {
             for (int y = ymin; y < ymax; y++) {
                 if (x < 0 || y < 0 || x >= width * rate || y >= height * rate) continue; // bound check
                 fill_n(bCoords, 3, 0);
+
                 barycentricCoord(x+0.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
-                // create (u, v) vector for use in sample functions
-                sample = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+                sample.p_uv = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+                barycentricCoord(x+1.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
+                sample.p_dx_uv = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+                barycentricCoord(x+0.5, y+1.5, x0, y0, x1, y1, x2, y2, bCoords);
+                sample.p_dy_uv = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+
                 float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
                 float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
                 float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
 
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
-                    if (psm == P_NEAREST) {
-                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_nearest(sample);
-                    } else if (psm == P_LINEAR) {
-                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_bilinear(sample);
-                    }
+                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample(sample);
                 }
             }
         }
-
-
-
     }
 
     void RasterizerImp::set_sample_rate(unsigned int rate) {
-        // TODO: Task 2: You may want to update this function for supersampling support
-
         this->sample_rate = rate;
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
     }
@@ -208,11 +193,9 @@ namespace CGL {
     void RasterizerImp::set_framebuffer_target(unsigned char* rgb_framebuffer,
                                                size_t width, size_t height)
     {
-        // TODO: Task 2: You may want to update this function for supersampling support
         this->width = width;
         this->height = height;
         this->rgb_framebuffer_target = rgb_framebuffer;
-
         this->sample_buffer.resize(width * height * sample_rate, Color::White);
     }
 
@@ -221,14 +204,12 @@ namespace CGL {
         std::fill(sample_buffer.begin(), sample_buffer.end(), Color::White);
     }
 
-
     // This function is called at the end of rasterizing all elements of the
     // SVG file.  If you use a supersample buffer to rasterize SVG elements
     // for antialising, you could use this call to fill the target framebuffer
     // pixels from the supersample buffer data.
     //
     void RasterizerImp::resolve_to_framebuffer() {
-        // TODO: Task 2: You will likely want to update this function for supersampling support
         for (int x = 0; x < width; ++x) {
             for (int y = 0; y < height; ++y) {
                 Color col = averagePixels(x, y);

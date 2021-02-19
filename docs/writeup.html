@@ -32,11 +32,7 @@
 <li><a href="#overview"><strong>Overview</strong></a></li>
 <li><a href="#section-i-rasterization"><strong>Section I: Rasterization</strong></a>
 <ul>
-<li><a href="#part-1-rasterizing-single-color-triangles"><strong>Part 1: Rasterizing single-color triangles</strong></a>
-<ul>
-<li><a href="#improving-speed"><strong>Improving speed</strong></a></li>
-</ul>
-</li>
+<li><a href="#part-1-rasterizing-single-color-triangles"><strong>Part 1: Rasterizing single-color triangles</strong></a></li>
 <li><a href="#part-2-antialiasing-triangles"><strong>Part 2: Antialiasing triangles</strong></a></li>
 </ul>
 </li>
@@ -44,11 +40,15 @@
 <ul>
 <li><a href="#part-3-transforms"><strong>Part 3: Transforms</strong></a></li>
 <li><a href="#part-4-barycentric-coordinates"><strong>Part 4: Barycentric coordinates</strong></a></li>
-<li><a href="#part-5-pixel-sampling-for-texture-mapping"><strong>Part 5: &quot;Pixel sampling&quot; for texture mapping</strong></a></li>
+<li><a href="#part-5-pixel-sampling-for-texture-mapping"><strong>Part 5: &quot;Pixel sampling&quot; for texture mapping</strong></a>
+<ul>
+<li><a href="#nearest-neighbor"><strong>Nearest Neighbor</strong></a></li>
+<li><a href="#bilinear"><strong>Bilinear</strong></a></li>
+</ul>
+</li>
 <li><a href="#part-6-level-sampling-with-mipmaps-for-texture-mapping"><strong>Part 6 &quot;Level sampling&quot; with mipmaps for texture mapping</strong></a></li>
 </ul>
 </li>
-<li><a href="#section-iii-art-competition"><strong>Section III: Art Competition</strong></a></li>
 </ul>
 <h2 id="overview"><strong>Overview</strong></h2>
 <p>The purpose of this project was to implement a simple rasterizer that can handle simplified <a href="https://en.wikipedia.org/wiki/Scalable_Vector_Graphics">Scalable Vector Graphics (SVG)</a> files.<br>
@@ -119,7 +119,7 @@ c-16-25.333-24-45-24-59z'/></svg></span></span></span></span></span></span></spa
 <p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>(when the z-component of each vector has the same sign)</mtext></mrow><annotation encoding="application/x-tex">\text{(when the z-component of each vector has the same sign)} 
 </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">(when the z-component of each vector has the same sign)</span></span></span></span></span></span></p>
 <p>The intuition for this comes from the right hand rule. Notice that the z-component of the cross products only have to have the same sign; an intuitive way to think of this is that if you traverse a triangle in a counterclockwise direction, a point inside the triangle will appear to be to the left of the edges. If you traverse a triangle the otherway, an inner point will appear to be to the right of the edges.</p>
-<h4 id="improving-speed"><strong>Improving speed</strong></h4>
+<h4 id="improving-speed--"><strong>Improving speed</strong>  <!-- omit in toc --></h4>
 <p>There are a few ways of improving the speed of the rasterization.<br>
 It's not very efficient to sample every single pixel: consider the case of a very small triangle that's rasterized for a very large amount of pixels.<br>
 The simplest way to cut down on the number of samples is to simply find a rectangle that the triangle is bounded by, and only sample pixels in the rectangle.<br>
@@ -128,12 +128,104 @@ Intuitively, we know that all the points inside a triangle won't have <span clas
 <p>Jagged edges on polygons are the result of <a href="https://en.wikipedia.org/wiki/aliasing">aliasing</a>. In order to smooth these &quot;jaggies&quot;, we need to implement some form of anti-aliasing.<br>
 If you are trying to represent some image on a screen, the solution from task 1 was to just take a sample of each pixel and if the pixel was inside the polygon, it was displayed. How can we display a more accurate image without simply adding more pixels?<br>
 Well, even if you don't have more pixels, you can still sample more! If you take more than one sample per pixel, you can average them to have a more accurate value for your pixels! This is called <a href="https://en.wikipedia.org/wiki/Supersampling">supersampling</a>.</p>
+<h4 id="implementation-"><strong>Implementation</strong> <!-- omit in toc --></h4>
+<p>In this project, super smapling was achieved through by rasterizing a higher resolution image to a (larger) sample buffer, then downsampling from the sample buffer to the display buffer. The sample buffer is a vector that holds <code>width * height * sample_rate</code> Color objects. The frame buffer holds <code>3 * width * height</code> RGB values, since each pixel has a red, green, and blue value. Basically, when any <code>rasterize</code> function is called, it will sample points determined by the <code>sample_rate</code> and populate the sample buffer with the samples. Then, <code>resolve_to_framebuffer</code> is called to downsample from <code>sample_buffer</code> to the <code>frame_buffer</code> by averaging the <code>sample_rate</code> number of supersamples.</p>
+<p>Here, you can see how taking more samples and averaging the results helps remove aliasing.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/task2a.png" alt=""></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/task2b.png" alt=""></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/task2c.png" alt=""></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><em>1x sampling</em></td>
+<td style="text-align:center"><em>4x supersampling</em></td>
+<td style="text-align:center"><em>16x supersampling</em></td>
+</tr>
+</tbody>
+</table>
 <h2 id="section-ii-sampling"><strong>Section II: Sampling</strong></h2>
 <h3 id="part-3-transforms"><strong>Part 3: Transforms</strong></h3>
+<p>Part of this assignment was to implement matrix transforms. These included rotations, translations, and scaling. I used these transformations to edit an SVG image of a robot to make him more human. I gave him a tie, some slacks, and a hat. Also, he's waving at you!</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/robot.jpg" width=500></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/robot.svg" alt=""></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><em>Before</em></td>
+<td style="text-align:center"><em>After</em></td>
+</tr>
+</tbody>
+</table>
 <h3 id="part-4-barycentric-coordinates"><strong>Part 4: Barycentric coordinates</strong></h3>
+<p><a href="https://en.wikipedia.org/wiki/Barycentric_coordinate_system">Barycentric coordinates</a> are coordinates that are defined in relation to the vertices of a triangle.<br>
+Basically, the idea is that you specify a location based on how far it is from each vertex. If you give each vertex some weight or value, you can think of barycentric coordinates as representing the &quot;contribution&quot; each vertex has to the overall value of the point. Formally, it's defined like this:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>For a triangle </mtext><mi>A</mi><mi>B</mi><mi>C</mi><mo separator="true">,</mo><mspace linebreak="newline"></mspace></mrow><annotation encoding="application/x-tex">\text{For a triangle } ABC, \\
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord text"><span class="mord">For a triangle </span></span><span class="mord mathdefault">A</span><span class="mord mathdefault" style="margin-right:0.05017em;">B</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mpunct">,</span></span><span class="mspace newline"></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle scriptlevel="0" displaystyle="false"><mi>P</mi><mo>=</mo><mo stretchy="false">(</mo><mi>α</mi><mo separator="true">,</mo><mi>β</mi><mo separator="true">,</mo><mi>γ</mi><mo stretchy="false">)</mo></mstyle><mspace linebreak="newline"></mspace><mi>α</mi><mo>+</mo><mi>β</mi><mo>+</mo><mi>γ</mi><mo>=</mo><mn>1</mn><mspace linebreak="newline"></mspace><mi>P</mi><mo>=</mo><mi>α</mi><mi>A</mi><mo>+</mo><mi>β</mi><mi>B</mi><mo>+</mo><mi>γ</mi><mi>C</mi></mrow><annotation encoding="application/x-tex">\text{$P = (\alpha, \beta, \gamma)$} \\
+\alpha + \beta + \gamma = 1 \\
+P = \alpha A + \beta B + \gamma C
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord mathdefault" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.0037em;">α</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.05278em;">β</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.05556em;">γ</span><span class="mclose">)</span></span></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault" style="margin-right:0.0037em;">α</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.05278em;">β</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.05556em;">γ</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault" style="margin-right:0.0037em;">α</span><span class="mord mathdefault">A</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.05278em;">β</span><span class="mord mathdefault" style="margin-right:0.05017em;">B</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.05556em;">γ</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span></span></span></span></span></p>
+<p>The pictures below give a visual idea of how points on a triangle can be thought of as the sum of each vertex's &quot;contribution.<br>
+Both the shapes have a clear red, green, or blue region. Using barycentric coordinates, the surface of the shapes were able to be colored by a process called linear interpolation, which resulted in a smooth transition between the colors.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/interptri.png"></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/interpcirc.png" alt=""></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><em>Color interpolated triangle</em></td>
+<td style="text-align:center"><em>Color interpolated circle</em></td>
+</tr>
+</tbody>
+</table>
 <h3 id="part-5-pixel-sampling-for-texture-mapping"><strong>Part 5: &quot;Pixel sampling&quot; for texture mapping</strong></h3>
+<p>So far in the project, we have been drawing shapes and coloring them with colors specified either in source code, or in the SVG files. However, what if we drew the inside of a house? Would it make sense to draw and define the color values of all the walls, or all the floor tiles?  No! All the walls usually look like each other, and all the floor tiles look like each other. So, it's easier and more efficient to have a general image of what those things are supposed to look like, and then <strong>sample</strong> from those images! This is called <strong>texture mapping</strong>!</p>
+<p>There's various ways to actually implement texture mapping. The two ways were were asked to implement texture mapping was <em>nearest neighbor</em> and <em>bilinear</em>.</p>
+<h4 id="nearest-neighbor"><strong>Nearest Neighbor</strong></h4>
+<p>Afer determining the texture coordinates <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(u,v)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathdefault">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mclose">)</span></span></span></span> by barycentric coordinates, we just scale the coordinates by the texture image dimensions, then round to the nearest pixel in the texture.</p>
+<h4 id="bilinear"><strong>Bilinear</strong></h4>
+<p>Bilinear filtering basically takes the four closest pixels to the <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(u,v)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathdefault">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mclose">)</span></span></span></span> and determines a weighted average based on the position of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(u,v)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathdefault">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mclose">)</span></span></span></span> relative to the four pixels.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/nearest1.png"></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/nearest16.png" alt=""></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><em>Nearest neighbor, 1x</em></td>
+<td style="text-align:center"><em>Nearest neighbor, 16x</em></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/bi1.png"></th>
+<th style="text-align:center"><img src="file:////home/fbwarren/Desktop/cs184/p1-rasterizer-sp21-teamname/docs/images/bi16.png" alt=""></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><em>Bilinear, 1x</em></td>
+<td style="text-align:center"><em>Bilinear, 16x</em></td>
+</tr>
+</tbody>
+</table>
+<p>It's a bit subtl, but you can see that there is less noise when using bilinear filtering. Fine features like hair, or feathers in this case, blend more nicely. Bilinear filtering generally helps smooth out high frequency details.</p>
 <h3 id="part-6-level-sampling-with-mipmaps-for-texture-mapping"><strong>Part 6 &quot;Level sampling&quot; with mipmaps for texture mapping</strong></h3>
-<h2 id="section-iii-art-competition"><strong>Section III: Art Competition</strong></h2>
 
     </body>
     </html>
