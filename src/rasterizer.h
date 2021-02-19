@@ -138,7 +138,7 @@ namespace CGL {
     virtual void resolve_to_framebuffer();
 
     float lineEquation(float x, float y, float x0, float y0, float x1, float y1);
-    void barycentricCoord(int x, int y, float x0, float y0, float x1, float y1, float x2, float y2, float *coords);
+    void barycentricCoord(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2, float *coords);
     Color averagePixels(int x, int y);
   };
 

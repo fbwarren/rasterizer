@@ -93,12 +93,10 @@ namespace CGL {
         // Use the line equation for each sample
         for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
-                // bound check
-                if (x < 0 || y < 0 || x > width * rate || y > height * rate) continue;
+                if (x < 0 || y < 0 || x >= width * rate || y >= height * rate) continue; // bound check
                 float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
                 float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
                 float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
-
                 // If the line equation result is + for all lines or - for all lines, then we know that the
                 // sample point is inside (bounded by) a triangle
                 if (l0 > 0.0 && l1 > 0.0 && l2 > 0.0 || l0 < 0.0 && l1 < 0.0 && l2 < 0.0)
@@ -133,18 +131,14 @@ namespace CGL {
         ymin = floor(min({y0, y1, y2}));
         ymax = ceil(max({y0, y1, y2}));
 
-        // Use the line equation for each sample
         for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
-                // bound check
-                if (x < 0 || y < 0 || x > width * rate || y > height * rate) continue;
+                if (x < 0 || y < 0 || x >= width * rate || y >= height * rate) continue; // bound check
                 fill_n(bCoords, 3, 0);
                 barycentricCoord(x+0.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
                 float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
                 float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
                 float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
-                // If the line equation result is + for all lines or - for all lines, then we know that the
-                // sample point is inside (bounded by) a triangle
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
                     sample_buffer[y * width * rate + x] = (bCoords[0] * c0) + (bCoords[1] * c1) + (bCoords[2] * c2);
                 }
@@ -163,8 +157,9 @@ namespace CGL {
         int rate = sqrt(sample_rate);
         float xmin, xmax, ymin, ymax;
         float bCoords[3];
-        Vector2D texSample;
+        Vector2D sample;
 
+        // scale the triangle
         x0 *= rate;
         x1 *= rate;
         x2 *= rate;
@@ -172,28 +167,28 @@ namespace CGL {
         y1 *= rate;
         y2 *= rate;
 
+        // bounding box
         xmin = floor(min({x0, x1, x2}));
         xmax = ceil(max({x0, x1, x2}));
         ymin = floor(min({y0, y1, y2}));
         ymax = ceil(max({y0, y1, y2}));
 
-        // Use the line equation for each sample
         for (int x = xmin; x < xmax; x++) {
             for (int y = ymin; y < ymax; y++) {
+                if (x < 0 || y < 0 || x >= width * rate || y >= height * rate) continue; // bound check
                 fill_n(bCoords, 3, 0);
                 barycentricCoord(x+0.5, y+0.5, x0, y0, x1, y1, x2, y2, bCoords);
                 // create (u, v) vector for use in sample functions
-                texSample = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
+                sample = Vector2D(u0, v0) * bCoords[0] + Vector2D(u1, v1) * bCoords[1] + Vector2D(u2, v2) * bCoords[2];
                 float l0 = lineEquation(x+0.5, y+0.5, x0, y0, x1, y1);
                 float l1 = lineEquation(x+0.5, y+0.5, x1, y1, x2, y2);
                 float l2 = lineEquation(x+0.5, y+0.5, x2, y2, x0, y0);
-                // If the line equation result is + for all lines or - for all lines, then we know that the
-                // sample point is inside (bounded by) a triangle
+
                 if (l0 >= 0.0 && l1 >= 0.0 && l2 >= 0.0 || l0 <= 0.0 && l1 <= 0.0 && l2 <= 0.0) {
                     if (psm == P_NEAREST) {
-                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_nearest(texSample);
+                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_nearest(sample);
                     } else if (psm == P_LINEAR) {
-                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_bilinear(texSample);
+                        sample_buffer[y * width * sqrt(sample_rate) + x] = tex.sample_bilinear(sample);
                     }
                 }
             }
@@ -267,7 +262,7 @@ namespace CGL {
     // Barycentric coordinate helper
     // Doesn't assume that the point is in your triangle!
     // The coordinates will go into the coords array
-    void RasterizerImp::barycentricCoord(int x, int y, float x0, float y0, float x1, float y1, float x2, float y2, float *coords) {
+    void RasterizerImp::barycentricCoord(float x, float y, float x0, float y0, float x1, float y1, float x2, float y2, float *coords) {
         float l1 = lineEquation(x, y, x1, y1, x2, y2);
         float l2 = lineEquation(x, y, x2, y2, x0, y0);
         coords[0] = (l1 / lineEquation(x0, y0, x1, y1, x2, y2));
