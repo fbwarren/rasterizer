@@ -1,6 +1,7 @@
 # rasterizer
 
-Run the executable with the command `./draw [path to .svg file/folder of multiple .svg to render]`  
+Run the executable with the command  
+`./draw [path to .svg file/folder of multiple .svg to render]`  
 
 <table>
 <thead>
