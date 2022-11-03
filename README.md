@@ -1,3 +1,51 @@
+# rasterizer
+
+Run the executable with the command `./draw [path to .svg file/folder of multiple .svg to render]`  
+
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><kbd>space</kbd></td>
+<td>return to original viewpoint</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>-</kbd></td>
+<td>decrease sample rate</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>=</kbd></td>
+<td>increase sample rate</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>Z</kbd></td>
+<td>toggle the pixel inspector</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>P</kbd></td>
+<td>switch between texture filtering methods on pixels</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>L</kbd></td>
+<td>switch between texture filtering methods on mipmap levels</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>S</kbd></td>
+<td>save a <em>PNG</em> image screenshot in the current directory</td>
+</tr>
+<tr>
+<td style="text-align:center"><kbd>1</kbd> - <kbd>9</kbd></td>
+<td>switch between svg files in the loaded directory</td>
+</tr>
+</tbody>
+</table>
+
+
 ## **Contents** <!-- omit in toc -->
 
 - [**Overview**](#overview)
