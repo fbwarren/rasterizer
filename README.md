@@ -1,25 +1,22 @@
 ## **Contents** <!-- omit in toc -->
 
 - [**Overview**](#overview)
-- [**Section I: Rasterization**](#section-i-rasterization)
-  - [**Part 1: Rasterizing single-color triangles**](#part-1-rasterizing-single-color-triangles)
-  - [**Part 2: Antialiasing triangles**](#part-2-antialiasing-triangles)
-- [**Section II: Sampling**](#section-ii-sampling)
-  - [**Part 3: Transforms**](#part-3-transforms)
-  - [**Part 4: Barycentric coordinates**](#part-4-barycentric-coordinates)
-  - [**Part 5: "Pixel sampling" for texture mapping**](#part-5-pixel-sampling-for-texture-mapping)
-  - [**Part 6 "Level sampling" with mipmaps for texture mapping**](#part-6-level-sampling-with-mipmaps-for-texture-mapping)
+- [**Rasterization**](#rasterization)
+  - [**Rasterizing single-color triangles**](#rasterizing-single-color-triangles)
+  - [**Antialiasing triangles**](#antialiasing-triangles)
+- [**Sampling**](#sampling)
+  - [**Transforms**](#transforms)
+  - [**Barycentric coordinates**](#barycentric-coordinates)
+  - [**"Pixel sampling" for texture mapping**](#pixel-sampling-for-texture-mapping)
+  - [**"Level sampling" with mipmaps for texture mapping**](#level-sampling-with-mipmaps-for-texture-mapping)
 
 ## **Overview**
-
-[Project Specs](https://cs184.eecs.berkeley.edu/sp21/docs/proj1-spec)  
-
 The purpose of this project was to implement a simple rasterizer that can handle simplified [Scalable Vector Graphics (SVG)](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics) files.  
 The bulk of the work in this project is to implement several features such as [supersampling](https://en.wikipedia.org/wiki/Supersampling), [matrix transforms](https://en.wikipedia.org/wiki/Transformation_matrix#Examples_in_2_dimensions), [barycentric coordinates](https://en.wikipedia.org/wiki/Barycentric_coordinate_system), pixel sampling, and [level sampling with mipmaps](https://en.wikipedia.org/wiki/Mipmap).  
 
 I completed this project alone.
 
-## **Section I: Rasterization**
+## **Rasterization**
 
 A [rasterizer](https://en.wikipedia.org/wiki/Rasterisation) is a program that an image described in vector graphics and converts it into a series of pixels that can be displayed on a screen.  
 After this project is built, the executable for the rasterizer can be ran with:  ```./draw [path to svg file/folder to render```  
@@ -30,7 +27,7 @@ When the executable is run, a couple things happen:
 3. The viewer waits for mouse/keyboard input in an infinite loop.
 4. ```DrawRend::redraw()``` performs high-level drawing work through the various **SVGElement** child classes, which pass their low-level shape rasterization data to appropraite methods in the **Rasterizer** class.
 
-### **Part 1: Rasterizing single-color triangles**
+### **Rasterizing single-color triangles**
 
 The first task in the assignment was to implement triangle rasterization.  
 The simplest way to do this is to simply check whether or not each pixel is inside or outside of the triangle. This is called sampling.  
@@ -54,7 +51,7 @@ It's not very efficient to sample every single pixel: consider the case of a ver
 The simplest way to cut down on the number of samples is to simply find a rectangle that the triangle is bounded by, and only sample pixels in the rectangle.  
 Intuitively, we know that all the points inside a triangle won't have $x$/$y$ values less than/greater than the minimum/maximum $x$/$y$ values of its vertices. So, we can define a rectangle by the minimum and maximum coordinate values of the triangle, and only sample from that rectangle.  
 
-### **Part 2: Antialiasing triangles**
+### **Antialiasing triangles**
 
 Jagged edges on polygons are the result of [aliasing](https://en.wikipedia.org/wiki/aliasing). In order to smooth these "jaggies", we need to implement some form of anti-aliasing.  
 If you are trying to represent some image on a screen, the solution from task 1 was to just take a sample of each pixel and if the pixel was inside the polygon, it was displayed. How can we display a more accurate image without simply adding more pixels?  
@@ -70,9 +67,9 @@ Here, you can see how taking more samples and averaging the results helps remove
 |:--:|:--:|:--:|
 | *1x sampling* | *4x supersampling* | *16x supersampling* |
 
-## **Section II: Sampling**
+## **Sampling**
 
-### **Part 3: Transforms**
+### **Transforms**
 
 Part of this assignment was to implement matrix transforms. These included rotations, translations, and scaling. I used these transformations to edit an SVG image of a robot to make him more human. I gave him a tie, some slacks, and a hat. Also, he's waving at you!  
 
@@ -80,7 +77,7 @@ Part of this assignment was to implement matrix transforms. These included rotat
 |:--:|:--:|
 | *Before* | *After* |  
   
-### **Part 4: Barycentric coordinates**
+### **Barycentric coordinates**
 
 [Barycentric coordinates](https://en.wikipedia.org/wiki/Barycentric_coordinate_system) are coordinates that are defined in relation to the vertices of a triangle.  
 Basically, the idea is that you specify a location based on how far it is from each vertex. If you give each vertex some weight or value, you can think of barycentric coordinates as representing the "contribution" each vertex has to the overall value of the point. Formally, it's defined like this:  
@@ -95,7 +92,7 @@ Both the shapes have a clear red, green, or blue region. Using barycentric coord
 |:--:|:--:|
 | *Color interpolated triangle* | *Color interpolated circle* |  
 
-### **Part 5: "Pixel sampling" for texture mapping**
+### **"Pixel sampling" for texture mapping**
 
 So far in the project, we have been drawing shapes and coloring them with colors specified either in source code, or in the SVG files. However, what if we drew the inside of a house? Would it make sense to draw and define the color values of all the walls, or all the floor tiles?  No! All the walls usually look like each other, and all the floor tiles look like each other. So, it's easier and more efficient to have a general image of what those things are supposed to look like, and then **sample** from those images! This is called **texture mapping**!  
 
@@ -115,7 +112,7 @@ There's various ways to actually implement texture mapping. The two ways were we
 
 It's a bit subtl, but you can see that there is less noise when using bilinear filtering. Fine features like hair, or feathers in this case, blend more nicely. Bilinear filtering generally helps smooth out high frequency details.
 
-### **Part 6 "Level sampling" with mipmaps for texture mapping**
+### **"Level sampling" with mipmaps for texture mapping**
 
 Just like with rasterizing images, texture mapping can suffer from aliasing issues. Specifically, with texture mapping, these issues a rooted in the difficults that come with trying to scale and transform a texture to properly fit a surface. Level sampling is a technique to mitigate these issues by storing different levels (mipmaps) of filtered and down-sampled textures, using the different levels depending on the distance of the surface.  
 In this project, there are two types of level sampling beyond just using the full resolution texture.  
